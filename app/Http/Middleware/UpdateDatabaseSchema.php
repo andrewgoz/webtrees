@@ -19,6 +19,9 @@ declare(strict_types=1);
 
 namespace Fisharebest\Webtrees\Http\Middleware;
 
+use Doctrine\DBAL\DriverManager;
+use Fisharebest\Webtrees\DB\Connection;
+use Fisharebest\Webtrees\DB\WebtreesSchema;
 use Fisharebest\Webtrees\Services\MigrationService;
 use Fisharebest\Webtrees\Webtrees;
 use Psr\Http\Message\ResponseInterface;
@@ -52,7 +55,19 @@ class UpdateDatabaseSchema implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $this->migration_service
-            ->updateSchema('\Fisharebest\Webtrees\Schema', 'WT_SCHEMA_VERSION', Webtrees::SCHEMA_VERSION);
+            ->updateSchema('\Fisharebest\Webtrees\WebtreesSchema', 'WT_SCHEMA_VERSION', Webtrees::SCHEMA_VERSION);
+
+        $connection = DriverManager::getConnection([
+            'wrapperClass' => Connection::class,
+            'dbname'       => 'webtrees',
+            'user'         => 'root',
+            'password'     => 'secret1234',
+            'host'         => 'localhost',
+            'driver'       => 'pdo_mysql',
+            'prefix'       => 'wt_',
+        ]);
+
+        WebtreesSchema::migrate($connection, 'wt_');
 
         return $handler->handle($request);
     }
